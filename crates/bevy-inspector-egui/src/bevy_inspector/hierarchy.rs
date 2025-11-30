@@ -1,10 +1,14 @@
-use std::collections::HashSet;
-
 use crate::bevy_inspector::{EntityFilter, Filter};
 use crate::utils::guess_entity_name;
 use bevy_ecs::{prelude::*, query::QueryFilter};
 use bevy_reflect::TypeRegistry;
 use egui::{CollapsingHeader, RichText};
+use std::collections::HashSet;
+use std::sync::Arc;
+
+pub struct UnusedPayload;
+
+type DndHandlerFn<P> = fn(ui: &mut egui::Ui, entity: Entity, world: &mut World, payload: Arc<P>);
 
 /// Display UI of the entity hierarchy.
 ///
@@ -20,6 +24,7 @@ pub fn hierarchy_ui(world: &mut World, ui: &mut egui::Ui, selected: &mut Selecte
         context_menu: None,
         shortcircuit_entity: None,
         extra_state: &mut (),
+        dnd: Option::<DndHandlerFn<UnusedPayload>>::None,
     }
     .show::<()>(ui)
 }
@@ -45,11 +50,15 @@ where
         context_menu: None,
         shortcircuit_entity: None,
         extra_state: &mut (),
+        dnd: Option::<DndHandlerFn<UnusedPayload>>::None,
     }
     .show::<QF>(ui)
 }
 
-pub struct Hierarchy<'a, T = ()> {
+pub struct Hierarchy<'a, T = (), P = UnusedPayload>
+where
+    P: Send + Sync + 'static,
+{
     pub world: &'a mut World,
     pub type_registry: &'a TypeRegistry,
     pub selected: &'a mut SelectedEntities,
@@ -57,9 +66,13 @@ pub struct Hierarchy<'a, T = ()> {
     pub shortcircuit_entity:
         Option<&'a mut dyn FnMut(&mut egui::Ui, Entity, &mut World, &mut T) -> bool>,
     pub extra_state: &'a mut T,
+    pub dnd: Option<DndHandlerFn<P>>,
 }
 
-impl<T> Hierarchy<'_, T> {
+impl<T, P> Hierarchy<'_, T, P>
+where
+    P: Send + Sync + 'static,
+{
     pub fn show<QF>(&mut self, ui: &mut egui::Ui) -> bool
     where
         QF: QueryFilter,
@@ -151,29 +164,36 @@ impl<T> Hierarchy<'_, T> {
             return false;
         }
 
-        #[allow(deprecated)] // the suggested replacement doesn't really work
-        let response = CollapsingHeader::new(name)
-            .id_source(entity)
-            .icon(move |ui, openness, response| {
-                if !has_children {
-                    return;
-                }
-                paint_default_icon(ui, openness, response);
-            })
-            .open(open)
-            .show(ui, |ui| {
-                let children = self.world.get::<Children>(entity);
-                if let Some(children) = children {
-                    let mut children = children.to_vec();
-                    filter.filter_entities(self.world, &mut children);
-                    for &child in &children {
-                        new_selection |= self.entity_ui(ui, child, always_open, &children, filter);
+        let frame = egui::Frame::default();
+        let (response, payload) = ui.dnd_drop_zone::<P, egui::Response>(frame, |ui| {
+            #[allow(deprecated)] // the suggested replacement doesn't really work
+            let response = CollapsingHeader::new(name)
+                .id_source(entity)
+                .icon(move |ui, openness, response| {
+                    if !has_children {
+                        return;
                     }
-                } else {
-                    ui.label("No children");
-                }
-            });
-        let header_response = response.header_response;
+                    paint_default_icon(ui, openness, response);
+                })
+                .open(open)
+                .show(ui, |ui| {
+                    let children = self.world.get::<Children>(entity);
+                    if let Some(children) = children {
+                        let mut children = children.to_vec();
+                        filter.filter_entities(self.world, &mut children);
+                        for &child in &children {
+                            new_selection |=
+                                self.entity_ui(ui, child, always_open, &children, filter);
+                        }
+                    } else {
+                        ui.label("No children");
+                    }
+                });
+
+            response.header_response
+        });
+
+        let header_response = response.response;
 
         if header_response.clicked() {
             let selection_mode = ui.input(|input| {
@@ -199,6 +219,10 @@ impl<T> Hierarchy<'_, T> {
         if let Some(context_menu) = self.context_menu.as_mut() {
             header_response
                 .context_menu(|ui| context_menu(ui, entity, self.world, self.extra_state));
+        }
+
+        if let Some((dnd, payload)) = self.dnd.zip(payload) {
+            (dnd)(ui, entity, self.world, payload)
         }
 
         new_selection
