@@ -1,3 +1,5 @@
+use std::any::TypeId;
+
 #[cfg(feature = "highlight_changes")]
 use crate::bevy_inspector::set_highlight_style;
 use crate::{
@@ -8,6 +10,7 @@ use crate::{
 };
 use bevy_ecs::{
     change_detection::DetectChangesMut,
+    component::ComponentId,
     entity::Entity,
     hierarchy::Children,
     reflect::AppTypeRegistry,
@@ -15,9 +18,11 @@ use bevy_ecs::{
 };
 use bevy_reflect::TypeRegistry;
 
-pub type EntityComponentContextMenu<'f> = fn(&mut egui::Ui, Entity, &mut World, &TypeRegistry);
+pub type EntityComponentContextMenu<'f> =
+    fn(&mut egui::Ui, Entity, &mut World, &TypeRegistry, ComponentId, TypeId);
 
-pub type EntitiesComponentContextMenu<'f> = fn(&mut egui::Ui, &[Entity], &mut World, &TypeRegistry);
+pub type EntitiesComponentContextMenu<'f> =
+    fn(&mut egui::Ui, &[Entity], &mut World, &TypeRegistry, ComponentId, TypeId);
 
 pub fn ui_for_entity(
     world: &mut World,
@@ -235,6 +240,8 @@ pub fn ui_for_entity_components(
                     // SAFETY: Nothing after this point requires the world
                     unsafe { component_view.world().world_mut() },
                     type_registry,
+                    component_id,
+                    component_type_id,
                 );
             }
         });
@@ -365,7 +372,14 @@ pub fn ui_for_entities_shared_components(
         // BEGIN MOD - allow user context menu
         response.header_response.context_menu(|ui| {
             if let Some(context_menu) = mod_context_menu {
-                (context_menu)(ui, entities, world, &type_registry);
+                (context_menu)(
+                    ui,
+                    entities,
+                    world,
+                    &type_registry,
+                    component_id,
+                    component_type_id,
+                );
             }
         });
         // END MOD
