@@ -16,7 +16,7 @@ use bevy_ecs::{
 use bevy_reflect::TypeRegistry;
 use std::path::Path;
 
-pub type EntityComponentContextMenu<'f> = &'f mut dyn FnMut(
+pub type EntityComponentContextMenu<'f> = fn(
     &mut egui::Ui,
     Entity,
     &mut RestrictedWorldView<'_>, // component_view
@@ -24,7 +24,7 @@ pub type EntityComponentContextMenu<'f> = &'f mut dyn FnMut(
     &TypeRegistry,
 );
 
-pub type EntitiesComponentContextMenu<'f> = &'f mut dyn FnMut(
+pub type EntitiesComponentContextMenu<'f> = fn(
     &mut egui::Ui,
     &[Entity],
     &mut RestrictedWorldView<'_>, // component_view
