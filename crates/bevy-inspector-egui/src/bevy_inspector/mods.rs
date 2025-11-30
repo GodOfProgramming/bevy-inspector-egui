@@ -4,33 +4,20 @@ use crate::{
     bevy_inspector::{EntityFilter, Filter, components_of_entity, errors},
     reflect_inspector::{Context, InspectorUi},
     restricted_world_view::{ReflectBorrow, RestrictedWorldView},
-    utils::{self, guess_entity_name::guess_entity_name},
+    utils::guess_entity_name::guess_entity_name,
 };
 use bevy_ecs::{
-    change_detection::{DetectChanges, DetectChangesMut},
+    change_detection::DetectChangesMut,
     entity::Entity,
     hierarchy::Children,
     reflect::AppTypeRegistry,
     world::{CommandQueue, World},
 };
 use bevy_reflect::TypeRegistry;
-use std::path::Path;
 
-pub type EntityComponentContextMenu<'f> = fn(
-    &mut egui::Ui,
-    Entity,
-    &mut RestrictedWorldView<'_>, // component_view
-    &mut Context<'_>,
-    &TypeRegistry,
-);
+pub type EntityComponentContextMenu<'f> = fn(&mut egui::Ui, Entity, &mut World, &TypeRegistry);
 
-pub type EntitiesComponentContextMenu<'f> = fn(
-    &mut egui::Ui,
-    &[Entity],
-    &mut RestrictedWorldView<'_>, // component_view
-    &mut Context<'_>,
-    &TypeRegistry,
-);
+pub type EntitiesComponentContextMenu<'f> = fn(&mut egui::Ui, &[Entity], &mut World, &TypeRegistry);
 
 pub fn ui_for_entity(
     world: &mut World,
@@ -205,11 +192,6 @@ pub fn ui_for_entity_components(
             }
         };
 
-        let changed_by = match &value {
-            ReflectBorrow::Mutable(val) => val.changed_by().into_option(),
-            ReflectBorrow::Immutable(_) => None,
-        };
-
         if value.is_changed() {
             #[cfg(feature = "highlight_changes")]
             set_highlight_style(ui);
@@ -247,31 +229,16 @@ pub fn ui_for_entity_components(
         // BEGIN MOD - allow user context menu
         response.header_response.context_menu(|ui| {
             if let Some(context_menu) = mod_context_menu {
-                (context_menu)(ui, entity, &mut component_view, &mut cx, type_registry);
-
-                if let Some(location) = changed_by {
-                    ui.label("Last change:");
-                    let path = Path::new(location.file());
-                    let pretty = utils::trim_cargo_registry_path(path);
-
-                    if ui
-                        .button(format!(
-                            "{}:{}:{}",
-                            pretty.as_deref().unwrap_or(path).display(),
-                            location.line(),
-                            location.column()
-                        ))
-                        .clicked()
-                    {
-                        if let Err(e) = utils::open_file_at(location) {
-                            bevy_log::error!("Failed to open last change location: {}", e);
-                        } else {
-                            bevy_log::info!("Successfully opened {location}");
-                        }
-                    }
-                }
+                (context_menu)(
+                    ui,
+                    entity,
+                    // SAFETY: Nothing after this point requires the world
+                    unsafe { component_view.world().world_mut() },
+                    type_registry,
+                );
             }
         });
+
         // END MOD
 
         #[cfg(feature = "documentation")]
@@ -335,8 +302,7 @@ pub fn ui_for_entities_shared_components(
             continue;
         }
 
-        let (resources_view, mut components_view) =
-            RestrictedWorldView::resources_components(world);
+        let (resources_view, components_view) = RestrictedWorldView::resources_components(world);
         let mut cx = Context {
             world: Some(resources_view),
             queue: Some(&mut queue),
@@ -399,7 +365,7 @@ pub fn ui_for_entities_shared_components(
         // BEGIN MOD - allow user context menu
         response.header_response.context_menu(|ui| {
             if let Some(context_menu) = mod_context_menu {
-                (context_menu)(ui, entities, &mut components_view, &mut cx, &type_registry);
+                (context_menu)(ui, entities, world, &type_registry);
             }
         });
         // END MOD
