@@ -165,35 +165,33 @@ where
         }
 
         let frame = egui::Frame::default();
-        let (response, payload) = ui.dnd_drop_zone::<P, egui::Response>(frame, |ui| {
-            #[allow(deprecated)] // the suggested replacement doesn't really work
-            let response = CollapsingHeader::new(name)
-                .id_source(entity)
-                .icon(move |ui, openness, response| {
-                    if !has_children {
-                        return;
-                    }
-                    paint_default_icon(ui, openness, response);
-                })
-                .open(open)
-                .show(ui, |ui| {
-                    let children = self.world.get::<Children>(entity);
-                    if let Some(children) = children {
-                        let mut children = children.to_vec();
-                        filter.filter_entities(self.world, &mut children);
-                        for &child in &children {
-                            new_selection |=
-                                self.entity_ui(ui, child, always_open, &children, filter);
-                        }
-                    } else {
-                        ui.label("No children");
-                    }
-                });
+        let mut frame = frame.begin(ui);
 
-            response.header_response
-        });
+        let response = CollapsingHeader::new(name)
+            .id_salt(entity)
+            .icon(move |ui, openness, response| {
+                if !has_children {
+                    return;
+                }
+                paint_default_icon(ui, openness, response);
+            })
+            .open(open)
+            .show(&mut frame.content_ui, |ui| {
+                let children = self.world.get::<Children>(entity);
+                if let Some(children) = children {
+                    let mut children = children.to_vec();
+                    filter.filter_entities(self.world, &mut children);
+                    for &child in &children {
+                        new_selection |= self.entity_ui(ui, child, always_open, &children, filter);
+                    }
+                } else {
+                    ui.label("No children");
+                }
+            });
 
-        let header_response = response.response;
+        let dnd_response = frame.allocate_space(ui);
+
+        let header_response = response.header_response;
 
         if header_response.clicked() {
             let selection_mode = ui.input(|input| {
@@ -221,7 +219,7 @@ where
                 .context_menu(|ui| context_menu(ui, entity, self.world, self.extra_state));
         }
 
-        if let Some((dnd, payload)) = self.dnd.zip(payload) {
+        if let Some((dnd, payload)) = self.dnd.zip(dnd_response.dnd_release_payload::<P>()) {
             (dnd)(ui, entity, self.world, payload)
         }
 
