@@ -499,15 +499,7 @@ pub(crate) fn ui_for_entity_with_children_inner<F>(
 ) where
     F: EntityFilter,
 {
-    mods::ui_for_entity_with_children_inner(
-        world,
-        entity,
-        ui,
-        id,
-        type_registry,
-        filter,
-        &mut None,
-    );
+    mods::ui_for_entity_with_children_inner(world, entity, ui, id, type_registry, filter, None);
 }
 
 /// Display the components of the given entity
@@ -524,7 +516,7 @@ pub(crate) fn ui_for_entity_components(
     id: egui::Id,
     type_registry: &TypeRegistry,
 ) {
-    mods::ui_for_entity_components(world, queue, entity, ui, id, type_registry, &mut None);
+    mods::ui_for_entity_components(world, queue, entity, ui, id, type_registry, None);
 }
 
 #[cfg(feature = "highlight_changes")]
@@ -578,7 +570,7 @@ pub fn ui_for_entities_shared_components(
     entities: &[Entity],
     ui: &mut egui::Ui,
 ) {
-    mods::ui_for_entities_shared_components(world, entities, ui, &mut None);
+    mods::ui_for_entities_shared_components(world, entities, ui, None);
 }
 
 pub mod by_type_id {
