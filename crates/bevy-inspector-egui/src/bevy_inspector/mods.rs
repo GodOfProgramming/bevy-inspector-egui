@@ -37,7 +37,7 @@ pub fn ui_for_entity(
     entity: Entity,
     ui: &mut egui::Ui,
     // BEGIN MOD - allow for custom context menu additions
-    mut mod_context_menu: Option<EntityComponentContextMenu>,
+    mod_context_menu: Option<EntityComponentContextMenu>,
     // END MOD
 ) {
     let type_registry = world.resource::<AppTypeRegistry>().0.clone();
@@ -54,7 +54,7 @@ pub fn ui_for_entity(
         ui,
         egui::Id::new(entity),
         &type_registry,
-        &mut mod_context_menu,
+        mod_context_menu,
     );
     queue.apply(world);
 }
@@ -64,7 +64,7 @@ pub fn ui_for_entity_with_children(
     entity: Entity,
     ui: &mut egui::Ui,
     // BEGIN MOD - allow for custom context menu additions
-    mut mod_context_menu: Option<EntityComponentContextMenu>,
+    mod_context_menu: Option<EntityComponentContextMenu>,
     // END MOD
 ) {
     let type_registry = world.resource::<AppTypeRegistry>().0.clone();
@@ -81,7 +81,7 @@ pub fn ui_for_entity_with_children(
         egui::Id::new(entity),
         &type_registry,
         &filter,
-        &mut mod_context_menu,
+        mod_context_menu,
     )
 }
 
@@ -93,7 +93,7 @@ pub fn ui_for_entity_with_children_inner<F>(
     type_registry: &TypeRegistry,
     filter: &F,
     // BEGIN MOD - allow for custom context menu additions
-    _mod_context_menu: &mut Option<EntityComponentContextMenu>,
+    mod_context_menu: Option<EntityComponentContextMenu>,
     // END MOD
 ) where
     F: EntityFilter,
@@ -106,7 +106,7 @@ pub fn ui_for_entity_with_children_inner<F>(
         ui,
         id,
         type_registry,
-        _mod_context_menu,
+        mod_context_menu,
     );
 
     let children = world
@@ -133,7 +133,7 @@ pub fn ui_for_entity_with_children_inner<F>(
                         id,
                         type_registry,
                         filter,
-                        _mod_context_menu,
+                        mod_context_menu,
                     );
                 });
         }
@@ -150,7 +150,7 @@ pub fn ui_for_entity_components(
     id: egui::Id,
     type_registry: &TypeRegistry,
     // BEGIN MOD - allow for custom context menu additions
-    mod_context_menu: &mut Option<EntityComponentContextMenu>,
+    mod_context_menu: Option<EntityComponentContextMenu>,
     // END MOD
 ) {
     let Ok(components) = components_of_entity(world, entity) else {
@@ -286,7 +286,7 @@ pub fn ui_for_entities_shared_components(
     entities: &[Entity],
     ui: &mut egui::Ui,
     // BEGIN MOD - allow for custom context menu additions
-    mod_context_menu: &mut Option<EntitiesComponentContextMenu>,
+    mod_context_menu: Option<EntitiesComponentContextMenu>,
     // END MOD
 ) {
     let type_registry = world.resource::<AppTypeRegistry>().0.clone();
