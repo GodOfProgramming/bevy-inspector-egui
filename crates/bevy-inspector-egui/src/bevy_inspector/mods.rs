@@ -167,9 +167,26 @@ pub fn ui_for_entity_components(
 
         if size == 0 {
             ui.indent(id, |ui| {
-                let _response = ui.label(&name);
+                let response = ui.label(&name);
+
+                // BEGIN MOD - context menu
+                if let Some(context_menu) = mod_context_menu {
+                    response.context_menu(|ui| {
+                        (context_menu)(
+                            ui,
+                            entity,
+                            // SAFETY: Will continue after this finishes
+                            unsafe { world.world().world_mut() },
+                            type_registry,
+                            component_id,
+                            component_type_id,
+                        );
+                    });
+                }
+                // END MOD
+
                 #[cfg(feature = "documentation")]
-                crate::egui_utils::show_docs(_response, type_docs);
+                crate::egui_utils::show_docs(response, type_docs);
             });
             continue;
         }
@@ -190,8 +207,25 @@ pub fn ui_for_entity_components(
             Ok(value) => value,
             Err(e) => {
                 ui.indent(id, |ui| {
-                    let response = ui.label(egui::RichText::new(&name).underline());
-                    response.on_hover_ui(|ui| errors::show_error(e, ui, &name));
+                    let response = ui
+                        .label(egui::RichText::new(&name).underline())
+                        .on_hover_ui(|ui| errors::show_error(e, ui, &name));
+
+                    // BEGIN MOD - context menu
+                    if let Some(context_menu) = mod_context_menu {
+                        response.context_menu(|ui| {
+                            (context_menu)(
+                                ui,
+                                entity,
+                                // SAFETY: Will continue after this finishes
+                                unsafe { component_view.world().world_mut() },
+                                type_registry,
+                                component_id,
+                                component_type_id,
+                            );
+                        });
+                    }
+                    // END MOD
                 });
                 continue;
             }
@@ -231,9 +265,11 @@ pub fn ui_for_entity_components(
             };
         });
 
+        let response = response.header_response;
+
         // BEGIN MOD - allow user context menu
-        response.header_response.context_menu(|ui| {
-            if let Some(context_menu) = mod_context_menu {
+        if let Some(context_menu) = mod_context_menu {
+            response.context_menu(|ui| {
                 (context_menu)(
                     ui,
                     entity,
@@ -243,13 +279,12 @@ pub fn ui_for_entity_components(
                     component_id,
                     component_type_id,
                 );
-            }
-        });
-
+            });
+        }
         // END MOD
 
         #[cfg(feature = "documentation")]
-        crate::egui_utils::show_docs(response.header_response, type_docs);
+        crate::egui_utils::show_docs(response, type_docs);
 
         ui.reset_style();
     }
