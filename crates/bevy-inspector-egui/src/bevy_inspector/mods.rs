@@ -1,6 +1,5 @@
 use std::any::TypeId;
 
-#[cfg(feature = "highlight_changes")]
 use crate::bevy_inspector::set_highlight_style;
 use crate::{
     bevy_inspector::{EntityFilter, Filter, components_of_entity, errors},
@@ -31,6 +30,9 @@ pub fn ui_for_entity(
     // BEGIN MOD - allow for custom context menu additions
     mod_context_menu: Option<EntityComponentContextMenu>,
     // END MOD
+    // BEGIN MOD - runtime highlight changes
+    highlight_changes: bool,
+    // END MOD
 ) {
     let type_registry = world.resource::<AppTypeRegistry>().0.clone();
     let type_registry = type_registry.read();
@@ -47,6 +49,7 @@ pub fn ui_for_entity(
         egui::Id::new(entity),
         &type_registry,
         mod_context_menu,
+        highlight_changes,
     );
     queue.apply(world);
 }
@@ -57,6 +60,9 @@ pub fn ui_for_entity_with_children(
     ui: &mut egui::Ui,
     // BEGIN MOD - allow for custom context menu additions
     mod_context_menu: Option<EntityComponentContextMenu>,
+    // END MOD
+    // BEGIN MOD - runtime highlight changes
+    highlight_changes: bool,
     // END MOD
 ) {
     let type_registry = world.resource::<AppTypeRegistry>().0.clone();
@@ -74,6 +80,7 @@ pub fn ui_for_entity_with_children(
         &type_registry,
         &filter,
         mod_context_menu,
+        highlight_changes,
     )
 }
 
@@ -87,6 +94,9 @@ pub fn ui_for_entity_with_children_inner<F>(
     // BEGIN MOD - allow for custom context menu additions
     mod_context_menu: Option<EntityComponentContextMenu>,
     // END MOD
+    // BEGIN MOD - runtime highlight changes
+    highlight_changes: bool,
+    // END MOD
 ) where
     F: EntityFilter,
 {
@@ -99,6 +109,7 @@ pub fn ui_for_entity_with_children_inner<F>(
         id,
         type_registry,
         mod_context_menu,
+        highlight_changes,
     );
 
     let children = world
@@ -126,6 +137,7 @@ pub fn ui_for_entity_with_children_inner<F>(
                         type_registry,
                         filter,
                         mod_context_menu,
+                        highlight_changes,
                     );
                 });
         }
@@ -143,6 +155,9 @@ pub fn ui_for_entity_components(
     type_registry: &TypeRegistry,
     // BEGIN MOD - allow for custom context menu additions
     mod_context_menu: Option<EntityComponentContextMenu>,
+    // END MOD
+    //BEGIN MOD - runtime highlight changes
+    highlight_changes: bool,
     // END MOD
 ) {
     let Ok(components) = components_of_entity(world, entity) else {
@@ -231,8 +246,7 @@ pub fn ui_for_entity_components(
             }
         };
 
-        if value.is_changed() {
-            #[cfg(feature = "highlight_changes")]
+        if highlight_changes && value.is_changed() {
             set_highlight_style(ui);
         }
 

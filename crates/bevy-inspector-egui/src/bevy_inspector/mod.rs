@@ -486,7 +486,7 @@ fn self_or_children_satisfy_filter(
 
 /// Display the given entity with all its components and children
 pub fn ui_for_entity_with_children(world: &mut World, entity: Entity, ui: &mut egui::Ui) {
-    mods::ui_for_entity_with_children(world, entity, ui, None);
+    mods::ui_for_entity_with_children(world, entity, ui, None, cfg!(feature = "highlight_changes"));
 }
 
 pub(crate) fn ui_for_entity_with_children_inner<F>(
@@ -499,12 +499,21 @@ pub(crate) fn ui_for_entity_with_children_inner<F>(
 ) where
     F: EntityFilter,
 {
-    mods::ui_for_entity_with_children_inner(world, entity, ui, id, type_registry, filter, None);
+    mods::ui_for_entity_with_children_inner(
+        world,
+        entity,
+        ui,
+        id,
+        type_registry,
+        filter,
+        None,
+        cfg!(feature = "highlight_changes"),
+    );
 }
 
 /// Display the components of the given entity
 pub fn ui_for_entity(world: &mut World, entity: Entity, ui: &mut egui::Ui) {
-    mods::ui_for_entity(world, entity, ui, None);
+    mods::ui_for_entity(world, entity, ui, None, cfg!(feature = "highlight_changes"));
 }
 
 /// Display the components of the given entity
@@ -516,10 +525,18 @@ pub(crate) fn ui_for_entity_components(
     id: egui::Id,
     type_registry: &TypeRegistry,
 ) {
-    mods::ui_for_entity_components(world, queue, entity, ui, id, type_registry, None);
+    mods::ui_for_entity_components(
+        world,
+        queue,
+        entity,
+        ui,
+        id,
+        type_registry,
+        None,
+        cfg!(feature = "highlight_changes"),
+    );
 }
 
-#[cfg(feature = "highlight_changes")]
 fn set_highlight_style(ui: &mut egui::Ui) {
     let highlight_color = egui::Color32::GOLD;
 
