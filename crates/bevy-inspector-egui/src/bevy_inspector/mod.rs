@@ -736,6 +736,8 @@ pub mod by_type_id {
                         let mut env = InspectorUi::for_bevy(type_registry, &mut cx);
                         env.ui_for_reflect_with_options(data, ui, id, &());
                     });
+
+                queue.apply(world);
             }
         }
     }
